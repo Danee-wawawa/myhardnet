@@ -1,0 +1,4 @@
+*.pyc
+datasets/
+*.pth
+*.pt
