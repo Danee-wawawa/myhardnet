@@ -131,6 +131,8 @@ parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='LI',
                     help='how many batches to wait before logging training status')
+parser.add_argument('--num_neg', type=int, default=1, metavar='LI',
+                    help='how many negatives')
 
 args = parser.parse_args()
 
@@ -428,6 +430,7 @@ def train(train_loader, model, optimizer, epoch, logger, load_triplets  = False)
                 loss_type = args.loss)
         else:
             loss = loss_HardNet(out_a, out_p,
+                            num_neg = args.num_neg,
                             margin=args.margin,
                             anchor_swap=args.anchorswap,
                             anchor_ave=args.anchorave,
