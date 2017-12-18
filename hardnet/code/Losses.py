@@ -91,7 +91,7 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
     assert anchor.size() == positive.size(), "Input sizes between positive and negative must be equal."
     assert anchor.dim() == 2, "Inputd must be a 2D matrix."
     assert num_neg > 0
-    assert num_neg =< 4, "Support maximal negatives: 4"
+    assert num_neg <= 4, "Support maximal negatives: 4"
     eps = 1e-8
     dist_matrix = distance_matrix_vector(anchor, positive) +eps
     eye = torch.autograd.Variable(torch.eye(dist_matrix.size(1))).cuda()
