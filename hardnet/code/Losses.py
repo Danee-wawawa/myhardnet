@@ -106,15 +106,34 @@ def loss_HardNet(anchor, positive, anchor_swap = False, anchor_ave = False,\
 
         min_neg2 = torch.min(dist_without_min_on_diag,0)[0]
         idx2 = torch.min(dist_without_min_on_diag,0)[1]
+        
+        # print('----------------------------------------', idx1)
+        # print('----------------------------------------', idx2)
 
-        min_neg = torch.min(min_neg,min_neg2)
-        positive_p = torch.index_select(positive,0,idx1)
-        anchor_a = torch.index_select(anchor,0,idx2)
-        dist_matrix_test = distance_matrix_vector(positive_p, anchor_a) +eps
-        bet_neg = torch.diag(dist_matrix_test)
 
-        min_neg = min_neg
-        pos = pos1
+        mask1 = torch.eq(idx1,idx2)
+        min_neg_1 = torch.masked_select(min_neg,mask1)
+        min_neg2_1 = torch.masked_select(min_neg2,mask1)
+        min_neg3 = torch.min(min_neg_1,min_neg2_1)
+        pos1_1 = torch.masked_select(pos1,mask1)
+
+        mask2 = torch.ne(idx1,idx2)
+        min_neg_2 = torch.masked_select(min_neg,mask2)
+        min_neg2_2 = torch.masked_select(min_neg2,mask2)
+        pos1_2 = torch.masked_select(pos1,mask2)
+
+        pos = torch.cat((pos1_1, pos1_2, pos1_2), 0)
+        min_neg = torch.cat((min_neg3, min_neg_2, min_neg2_2), 0)
+
+
+        # min_neg = torch.min(min_neg,min_neg2)
+        # positive_p = torch.index_select(positive,0,idx1)
+        # anchor_a = torch.index_select(anchor,0,idx2)
+        # dist_matrix_test = distance_matrix_vector(positive_p, anchor_a) +eps
+        # bet_neg = torch.diag(dist_matrix_test)
+
+        # min_neg = min_neg
+        # pos = pos1
     elif batch_reduce == 'average':
         pos = pos1.repeat(anchor.size(0)).view(-1,1).squeeze(0)
         min_neg = dist_without_min_on_diag.view(-1,1)
@@ -134,7 +153,7 @@ def loss_HardNet(anchor, positive, anchor_swap = False, anchor_ave = False,\
         print ('Unknown batch reduce mode. Try min, average or random')
         sys.exit(1)
     if loss_type == "triplet_margin":
-        loss = torch.clamp(margin + pos - min_neg, min=0.0)+torch.clamp(0.01 + pos - bet_neg, min=0.0)
+        loss = torch.clamp(margin + pos - min_neg, min=0.0)
     elif loss_type == 'softmax':
         exp_pos = torch.exp(2.0 - pos);
         exp_den = exp_pos + torch.exp(2.0 - min_neg) + eps;
