@@ -113,28 +113,26 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
         # print('----------------------------------------', idx2)
 
         if num_neg == 1:
-        # num_neg = 1, original hardnet
-            pass
+            min_neg = torch.min(min_neg,min_neg2)
+            pos = pos1
         elif num_neg == 2:
-            pass
+            mask1 = torch.eq(idx1,idx2)
+            min_neg_1 = torch.masked_select(min_neg,mask1)
+            min_neg2_1 = torch.masked_select(min_neg2,mask1)
+            min_neg3 = torch.min(min_neg_1,min_neg2_1)
+            pos1_1 = torch.masked_select(pos1,mask1)
+            mask2 = torch.ne(idx1,idx2)
+            min_neg_2 = torch.masked_select(min_neg,mask2)
+            min_neg2_2 = torch.masked_select(min_neg2,mask2)
+            pos1_2 = torch.masked_select(pos1,mask2)
+            pos = torch.cat((pos1_1, pos1_2, pos1_2), 0)
+            min_neg = torch.cat((min_neg3, min_neg_2, min_neg2_2), 0)
         elif num_neg == 3:
             pass
         elif num_neg == 4:
             pass
 
-        mask1 = torch.eq(idx1,idx2)
-        min_neg_1 = torch.masked_select(min_neg,mask1)
-        min_neg2_1 = torch.masked_select(min_neg2,mask1)
-        min_neg3 = torch.min(min_neg_1,min_neg2_1)
-        pos1_1 = torch.masked_select(pos1,mask1)
 
-        mask2 = torch.ne(idx1,idx2)
-        min_neg_2 = torch.masked_select(min_neg,mask2)
-        min_neg2_2 = torch.masked_select(min_neg2,mask2)
-        pos1_2 = torch.masked_select(pos1,mask2)
-
-        pos = torch.cat((pos1_1, pos1_2, pos1_2), 0)
-        min_neg = torch.cat((min_neg3, min_neg_2, min_neg2_2), 0)
 
 
         # min_neg = torch.min(min_neg,min_neg2)
