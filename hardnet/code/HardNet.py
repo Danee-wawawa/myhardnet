@@ -125,7 +125,7 @@ parser.add_argument('--optimizer', default='sgd', type=str,
 # Device options
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
-parser.add_argument('--gpu-id', default='1', type=str,
+parser.add_argument('--gpu-id', default='3', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
@@ -280,54 +280,30 @@ class HardNet(nn.Module):
     """
     def __init__(self):
         super(HardNet, self).__init__()
-        self.features_1 = nn.Sequential(
+        self.features = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(32, affine=False),
             nn.ReLU(),
             nn.Conv2d(32, 32, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(32, affine=False),
             nn.ReLU(),
-        )
-        self.features_2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias = False),
             nn.BatchNorm2d(64, affine=False),
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(64, affine=False),
             nn.ReLU(),
-        )
-        self.features_3 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=2,padding=1, bias = False),
             nn.BatchNorm2d(128, affine=False),
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(128, affine=False),
             nn.ReLU(),
-        )
-        self.features_1_1 = nn.Sequential(
-            nn.Conv2d(32, 128, kernel_size=4, stride=4,padding=0, bias = False),
-            nn.BatchNorm2d(128, affine=False),
-            nn.ReLU(),
-        )
-        self.features_2_1 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=2,padding=1, bias = False),
-            nn.BatchNorm2d(128, affine=False),
-            nn.ReLU(),
-        )
-        # self.pooling2 = nn.MaxPool2d(2, 2)
-        # self.pooling4 = nn.MaxPool2d(4, 4)
-        self.result = nn.Sequential(
-            nn.Dropout(0.1),
+            nn.Dropout(0.3),
             nn.Conv2d(128, 128, kernel_size=8, bias = False),
             nn.BatchNorm2d(128, affine=False),
         )
-        #self.features.apply(weights_init)
-        self.features_1.apply(weights_init)
-        self.features_2.apply(weights_init)
-        self.features_3.apply(weights_init)
-        self.features_1_1.apply(weights_init)
-        self.features_2_1.apply(weights_init)
-        self.result.apply(weights_init)
+        self.features.apply(weights_init)
         return
     
     def input_norm(self,x):
@@ -337,20 +313,8 @@ class HardNet(nn.Module):
         return (x - mp.detach().unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand_as(x)) / sp.detach().unsqueeze(-1).unsqueeze(-1).unsqueeze(1).expand_as(x)
     
     def forward(self, input):
-        x_features_1 = self.features_1(self.input_norm(input))
-        x_features_2 = self.features_2(x_features_1)
-        x_features_3 = self.features_3(x_features_2)
-        # x_f_1_down = self.pooling4(x_features_1)
-        # x_f_2_down = self.pooling2(x_features_2)
-        x_f_1_down = self.features_1_1(x_features_1)
-        x_f_2_down = self.features_2_1(x_features_2)
-        fuse = x_f_1_down + x_f_2_down + x_features_3
-
-
-
-        # fuse = torch.cat((x_f_1_down, x_f_2_down, x_features_3), 1)
-        result = self.result(fuse)
-        x = result.view(result.size(0), -1)
+        x_features = self.features(self.input_norm(input))
+        x = x_features.view(x_features.size(0), -1)
         return L2Norm()(x)
 
 def weights_init(m):

@@ -116,21 +116,31 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
             min_neg = torch.min(min_neg,min_neg2)
             pos = pos1
         elif num_neg == 2:
-            mask1 = torch.eq(idx1,idx2)
-            min_neg_1 = torch.masked_select(min_neg,mask1)
-            min_neg2_1 = torch.masked_select(min_neg2,mask1)
-            min_neg3 = torch.min(min_neg_1,min_neg2_1)
-            pos1_1 = torch.masked_select(pos1,mask1)
-            mask2 = torch.ne(idx1,idx2)
-            min_neg_2 = torch.masked_select(min_neg,mask2)
-            min_neg2_2 = torch.masked_select(min_neg2,mask2)
-            pos1_2 = torch.masked_select(pos1,mask2)
-            pos = torch.cat((pos1_1, pos1_2, pos1_2), 0)
-            min_neg = torch.cat((min_neg3, min_neg_2, min_neg2_2), 0)
+            pos = torch.cat((pos1, pos1), 0)
+            min_neg = torch.cat((min_neg, min_neg2), 0)
         elif num_neg == 3:
-            pass
+            min_neg_r = min_neg
+            min_neg_c = torch.topk(dist_without_min_on_diag,2,0,largest=False)[0]
+            min_neg_c_1 = min_neg2
+            min_neg_c_2 = torch.topk(min_neg_c,1,0)[0]
+            min_neg_c_2 = min_neg_c_2[0]
+            pos = torch.cat((pos1, pos1,pos1), 0)
+            # print('---------------------------',min_neg_r,min_neg_c_1,min_neg_c_2)
+            min_neg = torch.cat((min_neg_r,min_neg_c_1,min_neg_c_2),0)
         elif num_neg == 4:
-            pass
+            min_neg_r = torch.topk(dist_without_min_on_diag,2,1,largest=False)[0]
+            min_neg_r_1 = min_neg
+            min_neg_r_2 = torch.topk(min_neg_r,1,1)[0]
+            min_neg_r_2 = torch.t(min_neg_r_2)[0]
+
+            min_neg_c = torch.topk(dist_without_min_on_diag,2,0,largest=False)[0]
+            min_neg_c_1 = min_neg2
+            min_neg_c_2 = torch.topk(min_neg_c,1,0)[0]
+            min_neg_c_2 = min_neg_c_2[0]
+
+            pos = torch.cat((pos1, pos1,pos1,pos1), 0)
+            # print('---------------------------',min_neg_r_1,min_neg_r_2,min_neg_c_1,min_neg_c_2)
+            min_neg = torch.cat((min_neg_r_1,min_neg_r_2,min_neg_c_1,min_neg_c_2),0)
 
 
 

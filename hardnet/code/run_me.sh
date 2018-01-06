@@ -1,4 +1,5 @@
 #!/bin/bash
 cd ..
-python ./code/HardNet.py --fliprot=False --experiment-name=/liberty_train/ | tee -a log_HardNet_Lib.log
-python ./code/HardNet.py --fliprot=True --experiment-name=/liberty_train_with_aug/  | tee -a log_HardNetPlus_Lib.log
+python ./code/HardNet.py --num_neg=3 --training-set=notredame --log-dir=../notredame_logs/ --model-dir=../notredame_models/ --experiment-name=/notredame_train/ --gpu-id=2 --fliprot=False | tee -a log_notredame_noaug.log
+python ./code/HardNet.py --num_neg=3 --training-set=yosemite --log-dir=../yosemite_logs/ --model-dir=../yosemite_models/ --experiment-name=/yosemite_train/ --gpu-id=2 --fliprot=False | tee -a log_yosemite_noaug.log
+
