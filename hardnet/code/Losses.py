@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import sys
+import numpy as np
+from torch.autograd import Variable
 
 def distance_matrix_vector(anchor, positive):
     """Given batch of anchor descriptors and positive descriptors calculate distance matrix"""
@@ -83,21 +85,22 @@ def loss_L2Net(anchor, positive, anchor_swap = False,  margin = 1.0, loss_type =
     loss = torch.mean(loss)
     return loss
 
-def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = False,\
-        margin = 1.0, batch_reduce = 'min', loss_type = "triplet_margin"):
+def loss_HardNet(anchor, positive, anchor_swap = False, anchor_ave = False,\
+        margin = 1.0, margin_neg = 0.5, batch_reduce = 'min', loss_type = "triplet_margin"):
     """HardNet margin loss - calculates loss based on distance matrix based on positive distance and closest negative distance.
     """
 
     assert anchor.size() == positive.size(), "Input sizes between positive and negative must be equal."
     assert anchor.dim() == 2, "Inputd must be a 2D matrix."
-    assert num_neg > 0
-    assert num_neg <= 4, "Support maximal negatives: 4"
     eps = 1e-8
     dist_matrix = distance_matrix_vector(anchor, positive) +eps
     eye = torch.autograd.Variable(torch.eye(dist_matrix.size(1))).cuda()
 
     # steps to filter out same patches that occur in distance matrix as negatives
     pos1 = torch.diag(dist_matrix)
+
+    test = torch.arange(0,pos1.size()[0])
+
     dist_without_min_on_diag = dist_matrix+eye*10
     mask = (dist_without_min_on_diag.ge(0.008)-1)*-1
     mask = mask.type_as(dist_without_min_on_diag)*10
@@ -108,43 +111,84 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
 
         min_neg2 = torch.min(dist_without_min_on_diag,0)[0]
         idx2 = torch.min(dist_without_min_on_diag,0)[1]
-        
+        min_neg5 = torch.min(min_neg,min_neg2)        
         # print('----------------------------------------', idx1)
         # print('----------------------------------------', idx2)
+        # mask1 = torch.eq(idx1,idx2)
+        # print('---------------------------',mask,anchor)
+        
+        # for i in range(1024):
+        #     test.append(i)
+        # test = torch.cuda.FloatTensor(test)
+        # print('----------------------------------------', test,mask1)
+        # print('-------------------',mask1)
+        # # mask2 = torch.cat((torch.t(mask1),torch.t(mask1)),1)
+        # for i in range(1024):
+        #     test.append(i)
+        # test1 = torch.cuda.FloatTensor(np.array(test))
+        
+        # print('---------------',pos1,test.cuda(),mask1,idx1)
+        # pos1_1 = torch.masked_select(pos1,mask1)
+        # mask3 = torch.ByteTensor(mask1)
 
-        if num_neg == 1:
-            min_neg = torch.min(min_neg,min_neg2)
-            pos = pos1
-        elif num_neg == 2:
-            pos = torch.cat((pos1, pos1), 0)
-            min_neg = torch.cat((min_neg, min_neg2), 0)
-        elif num_neg == 3:
-            min_neg_r = min_neg
-            min_neg_c = torch.topk(dist_without_min_on_diag,2,0,largest=False)[0]
-            min_neg_c_1 = min_neg2
-            min_neg_c_2 = torch.topk(min_neg_c,1,0)[0]
-            min_neg_c_2 = min_neg_c_2[0]
-            pos = torch.cat((pos1, pos1,pos1), 0)
-            # print('---------------------------',min_neg_r,min_neg_c_1,min_neg_c_2)
-            min_neg = torch.cat((min_neg_r,min_neg_c_1,min_neg_c_2),0)
-        elif num_neg == 4:
-            min_neg_r = torch.topk(dist_without_min_on_diag,2,1,largest=False)[0]
-            min_neg_r_1 = min_neg
-            min_neg_r_2 = torch.topk(min_neg_r,1,1)[0]
-            min_neg_r_2 = torch.t(min_neg_r_2)[0]
+        mask1 = torch.eq(idx1,idx2)
+        min_neg_1 = torch.masked_select(min_neg,mask1)
+        min_neg2_1 = torch.masked_select(min_neg2,mask1)
+        min_neg3 = torch.min(min_neg_1,min_neg2_1)
+        pos1_1 = torch.masked_select(pos1,mask1)
 
-            min_neg_c = torch.topk(dist_without_min_on_diag,2,0,largest=False)[0]
-            min_neg_c_1 = min_neg2
-            min_neg_c_2 = torch.topk(min_neg_c,1,0)[0]
-            min_neg_c_2 = min_neg_c_2[0]
-
-            pos = torch.cat((pos1, pos1,pos1,pos1), 0)
-            # print('---------------------------',min_neg_r_1,min_neg_r_2,min_neg_c_1,min_neg_c_2)
-            min_neg = torch.cat((min_neg_r_1,min_neg_r_2,min_neg_c_1,min_neg_c_2),0)
-
+        mask2 = torch.ne(idx1,idx2)
+        min_neg_2 = torch.masked_select(min_neg,mask2)
+        min_neg2_2 = torch.masked_select(min_neg2,mask2)
+        min_neg4 = torch.min(min_neg_2,min_neg2_2)
+        pos1_2 = torch.masked_select(pos1,mask2)
+        
 
 
+        idx1_1 = torch.masked_select(idx1,mask2)
+        idx2_1 = torch.masked_select(idx2,mask2)
+        anchor_a = torch.index_select(anchor,0,idx2_1)
+        positive_p = torch.index_select(positive,0,idx1_1)
+        # print('---------------',mask2.data)
+        
+        # mask3 = torch.masked_select(test.cuda(),mask2.data)
+        # mask3 = Variable(mask3.type(torch.LongTensor).cuda())
+        # print('---------------',mask2.cuda(),idx1)
+        # anchor_a = torch.index_select(anchor,0,mask3)
+        # positive_p = torch.index_select(positive,0,mask3)
+        dist_matrix_test = distance_matrix_vector(positive_p, anchor_a) +eps
+        bet_neg = torch.diag(dist_matrix_test)
+        # pos1_1 = torch.masked_select(pos1,mask2)
 
+        pos1_2_mean = torch.mean(pos1_2)
+        min_neg4_mean = torch.mean(min_neg4)
+
+        
+
+        pos1_2_mean = pos1_2_mean.data.cpu().numpy()
+        min_neg4_mean = min_neg4_mean.data.cpu().numpy()
+
+
+
+        pos12txt = open('pos2.txt','a')
+        for j in pos1_2_mean:
+        	pos12txt.write(str(j))
+        pos12txt.write('\n')
+        pos12txt.close()
+        minneg4txt = open('neg2.txt','a')
+        for v in min_neg4_mean:
+        	minneg4txt.write(str(v))
+        minneg4txt.write('\n')
+        minneg4txt.close()               
+
+
+        
+        # print('----------------------------------------', pos1_1)
+        pos = pos1_2
+        min_neg = min_neg4
+        bet_neg = bet_neg
+        margin_test = torch.mean(min_neg) - torch.mean(pos)
+        # print('----------------------------------------', pos,min_neg,pos1_2,bet_neg)
         # min_neg = torch.min(min_neg,min_neg2)
         # positive_p = torch.index_select(positive,0,idx1)
         # anchor_a = torch.index_select(anchor,0,idx2)
@@ -172,7 +216,18 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
         print ('Unknown batch reduce mode. Try min, average or random')
         sys.exit(1)
     if loss_type == "triplet_margin":
-        loss = torch.clamp(margin + pos - min_neg, min=0.0)
+        #loss = torch.clamp(margin + pos - min_neg, min=0.0)
+        #loss = torch.clamp(margin + pos - min_neg, min=0.0) + torch.clamp(margin - bet_neg, min=0.0)
+        #loss1 = torch.clamp(margin_test + pos - min_neg, min=0.0)
+        #loss2 = torch.clamp(0.5*margin_test + pos - bet_neg, min=0.0)
+        loss1 = torch.clamp(1.0 + pos - min_neg, min=0.0)
+        loss2 = torch.clamp(1.5 - min_neg, min=0.0)
+        #loss2 = torch.clamp(margin_neg + pos1_2 - bet_neg, min=0.0)
+        #print('-------------------------------------------------------------------------',margin_test)
+        #print('--------------------------------------------------',loss2)
+        #loss1 = torch.mean(loss1)
+        #loss2 = torch.mean(loss2)
+        loss = loss1+loss2
     elif loss_type == 'softmax':
         exp_pos = torch.exp(2.0 - pos);
         exp_den = exp_pos + torch.exp(2.0 - min_neg) + eps;
@@ -183,6 +238,7 @@ def loss_HardNet(anchor, positive, num_neg=1, anchor_swap = False, anchor_ave = 
         print ('Unknown loss type. Try triplet_margin, softmax or contrastive')
         sys.exit(1)
     loss = torch.mean(loss)
+    #loss = loss
     return loss
 
 

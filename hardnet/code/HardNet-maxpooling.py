@@ -106,10 +106,6 @@ parser.add_argument('--n-triplets', type=int, default=5000000, metavar='N',
                     help='how many triplets will generate from the dataset')
 parser.add_argument('--margin', type=float, default=1.0, metavar='MARGIN',
                     help='the margin value for the triplet loss function (default: 1.0')
-
-parser.add_argument('--margin_neg', type=float, default=0.5, metavar='MARGIN',
-                    help='the margin value for the triplet loss function (default: 1.0')
-
 parser.add_argument('--gor',type=str2bool, default=False,
                     help='use gor')
 parser.add_argument('--alpha', type=float, default=1.0, metavar='ALPHA',
@@ -138,9 +134,6 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='LI',
 
 args = parser.parse_args()
 
-# if not os.path.exists(args.experiment_name):
-#     os.makedirs(args.experiment_name)
-
 suffix = '{}_{}'.format(args.training_set, args.batch_reduce)
 
 if args.gor:
@@ -149,10 +142,8 @@ if args.anchorswap:
     suffix = suffix + '_as'
 if args.anchorave:
     suffix = suffix + '_av'
-if args.fliprot:
-        suffix = suffix + '_fliprot'
 
-triplet_flag = (args.batch_reduce == 'random_global') or args.gor
+triplet_flag = (args.batch_reduce == 'random_global') or args.gor 
 
 dataset_names = ['liberty', 'notredame', 'yosemite']
 
@@ -287,36 +278,38 @@ class HardNet(nn.Module):
     """
     def __init__(self):
         super(HardNet, self).__init__()
-        self.features = nn.Sequential(
+        self.features_1 = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(32, affine=False),
             nn.ReLU(),
             nn.Conv2d(32, 32, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(32, affine=False),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1, bias = False),
-            nn.BatchNorm2d(32, affine=False),
-            nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1, bias = False),
-            nn.BatchNorm2d(32, affine=False),
-            nn.ReLU(),
+        )
+        self.features_2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias = False),
             nn.BatchNorm2d(64, affine=False),
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(64, affine=False),
             nn.ReLU(),
+        )
+        self.features_3 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=2,padding=1, bias = False),
             nn.BatchNorm2d(128, affine=False),
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=3, padding=1, bias = False),
             nn.BatchNorm2d(128, affine=False),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Conv2d(128, 128, kernel_size=8, bias = False),
+        )
+        self.pooling2 = nn.MaxPool2d(2, 2)
+        self.pooling4 = nn.MaxPool2d(4, 4)
+        self.result = nn.Sequential(
+            nn.Dropout(0.1),
+            nn.Conv2d(224, 128, kernel_size=8, bias = False),
             nn.BatchNorm2d(128, affine=False),
         )
-        self.features.apply(weights_init)
+        #self.features.apply(weights_init)
         return
     
     def input_norm(self,x):
@@ -326,13 +319,19 @@ class HardNet(nn.Module):
         return (x - mp.detach().unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand_as(x)) / sp.detach().unsqueeze(-1).unsqueeze(-1).unsqueeze(1).expand_as(x)
     
     def forward(self, input):
-        x_features = self.features(self.input_norm(input))
-        x = x_features.view(x_features.size(0), -1)
+        x_features_1 = self.features_1(self.input_norm(input))
+        x_features_2 = self.features_2(x_features_1)
+        x_features_3 = self.features_3(x_features_2)
+        x_f_1_down = self.pooling4(x_features_1)
+        x_f_2_down = self.pooling2(x_features_2)
+        fuse = torch.cat((x_f_1_down, x_f_2_down, x_features_3), 1)
+        result = self.result(fuse)
+        x = result.view(result.size(0), -1)
         return L2Norm()(x)
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
-        nn.init.orthogonal(m.weight.data, gain=0.6)
+        nn.init.orthogonal(m.weight.data, gain=0.7)
         try:
             nn.init.constant(m.bias.data, 0.01)
         except:
@@ -408,7 +407,6 @@ def train(train_loader, model, optimizer, epoch, logger, load_triplets  = False)
         else:
             loss = loss_HardNet(out_a, out_p,
                             margin=args.margin,
-                            margin_neg=args.margin_neg,
                             anchor_swap=args.anchorswap,
                             anchor_ave=args.anchorave,
                             batch_reduce = args.batch_reduce,
@@ -521,8 +519,8 @@ def main(train_loader, test_loaders, model, logger, file_logger):
     if args.cuda:
         model.cuda()
 
-    optimizer1 = create_optimizer(model.features, args.lr)
-
+    optimizer1 = create_optimizer(model, args.lr)
+    model.apply(weights_init)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -538,7 +536,6 @@ def main(train_loader, test_loaders, model, logger, file_logger):
     start = args.start_epoch
     end = start + args.epochs
     for epoch in range(start, end):
-
         # iterate over test loaders and test results
         train(train_loader, model, optimizer1, epoch, logger, triplet_flag)
         for test_loader in test_loaders:
@@ -573,9 +570,6 @@ def main(train_loader, test_loaders, model, logger, file_logger):
                 w1bs.draw_and_save_plots(DESC_DIR=DESCS_DIR, OUT_DIR=OUT_DIR,
                                          methods=["SNN_ratio"],
                                          descs_to_draw=[desc_name])
-        #randomize train loader batches
-        train_loader, test_loaders2 = create_loaders(load_random_triplets=triplet_flag)
-
 
 if __name__ == '__main__':
     LOG_DIR = args.log_dir
@@ -592,5 +586,6 @@ if __name__ == '__main__':
         from Loggers import Logger, FileLogger
         logger = Logger(LOG_DIR)
         #file_logger = FileLogger(./log/+suffix)
+
     train_loader, test_loaders = create_loaders(load_random_triplets = triplet_flag)
     main(train_loader, test_loaders, model, logger, file_logger)

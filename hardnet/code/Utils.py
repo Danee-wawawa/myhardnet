@@ -5,10 +5,10 @@ import cv2
 import numpy as np
 
 # resize image to size 32x32
-cv2_scale = lambda x: cv2.resize(x, dsize=(32, 32),
+cv2_scale = lambda x: cv2.resize(x, dsize=(64, 64),
                                  interpolation=cv2.INTER_LINEAR)
 # reshape image
-np_reshape = lambda x: np.reshape(x, (32, 32, 1))
+np_reshape = lambda x: np.reshape(x, (64, 64, 1))
 
 class L2Norm(nn.Module):
     def __init__(self):
