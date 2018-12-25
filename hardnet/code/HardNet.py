@@ -226,6 +226,9 @@ class TripletPhotoTour(dset.PhotoTour):
             c2 = np.random.randint(0, n_classes)
             while c1 == c2:
                 c2 = np.random.randint(0, n_classes)
+            #if len(indices[c1]) == 2:
+            #print("---------------------------------",n_classes,c1)
+            #print("---------------------------------",indices[c1])
             if len(indices[c1]) == 2:  # hack to speed up process
                 n1, n2 = 0, 1
             else:
@@ -332,7 +335,7 @@ class HardNet(nn.Module):
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
-        nn.init.orthogonal(m.weight.data, gain=0.6)
+        nn.init.orthogonal_(m.weight.data, gain=0.6)
         try:
             nn.init.constant(m.bias.data, 0.01)
         except:
@@ -540,7 +543,7 @@ def main(train_loader, test_loaders, model, logger, file_logger):
     for epoch in range(start, end):
 
         # iterate over test loaders and test results
-        train(train_loader, model, optimizer1, epoch, logger, triplet_flag)
+        c(train_loader, model, optimizer1, epoch, logger, triplet_flag)
         for test_loader in test_loaders:
             test(test_loader['dataloader'], model, epoch, logger, test_loader['name'])
         
@@ -589,8 +592,10 @@ if __name__ == '__main__':
     logger, file_logger = None, None
     model = HardNet()
     if(args.enable_logging):
-        from Loggers import Logger, FileLogger
-        logger = Logger(LOG_DIR)
-        #file_logger = FileLogger(./log/+suffix)
+        #from Loggers import Logger, FileLogger
+        from Loggers import FileLogger
+        #logger = Logger(LOG_DIR)
+        file_logger = FileLogger("./log/"+suffix)
     train_loader, test_loaders = create_loaders(load_random_triplets = triplet_flag)
+    #main(train_loader, test_loaders, model, logger, file_logger)
     main(train_loader, test_loaders, model, logger, file_logger)
