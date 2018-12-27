@@ -210,7 +210,7 @@ class TripletPhotoTour(dset.PhotoTour):
             return inds
 
         triplets = []
-        indices = create_indices(labels)
+        indices = create_indices(labels.numpy())
         unique_labels = np.unique(labels.numpy())
         n_classes = unique_labels.shape[0]
         # add only unique indices in batch
@@ -432,12 +432,12 @@ def train(train_loader, model, optimizer, epoch, logger, load_triplets  = False)
                 'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data_a), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader),
-                    loss.data[0]))
+                    loss.item()))
             print(
                 'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data_a), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader),
-                    loss.data[0]))
+                    loss.item()))
 
     if (args.enable_logging):
         logger.log_value('loss', loss.data[0]).step()
@@ -543,7 +543,7 @@ def main(train_loader, test_loaders, model, logger, file_logger):
     for epoch in range(start, end):
 
         # iterate over test loaders and test results
-        c(train_loader, model, optimizer1, epoch, logger, triplet_flag)
+        train(train_loader, model, optimizer1, epoch, logger, triplet_flag)
         for test_loader in test_loaders:
             test(test_loader['dataloader'], model, epoch, logger, test_loader['name'])
         

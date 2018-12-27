@@ -165,19 +165,21 @@ def loss_HardNet(anchor, positive, anchor_swap = False, anchor_ave = False,\
 
         
 
-        pos1_2_mean = pos1_2_mean.data.cpu().numpy()
-        min_neg4_mean = min_neg4_mean.data.cpu().numpy()
+        #pos1_2_mean = pos1_2_mean.data.cpu().numpy()
+        #min_neg4_mean = min_neg4_mean.data.cpu().numpy()
 
 
-
-        pos12txt = open('pos2.txt','a')
-        for j in pos1_2_mean:
-        	pos12txt.write(str(j))
+        #print("-----------------",pos1_2_mean)
+        pos12txt = open('../pos2.txt','a')
+        #for j in pos1_2_mean:
+        #    pos12txt.write(str(j))
+        pos12txt.write(str(pos1_2_mean))
         pos12txt.write('\n')
         pos12txt.close()
-        minneg4txt = open('neg2.txt','a')
-        for v in min_neg4_mean:
-        	minneg4txt.write(str(v))
+        minneg4txt = open('../neg2.txt','a')
+        #for v in min_neg4_mean:
+        #    minneg4txt.write(str(v))
+        minneg4txt.write(str(min_neg4_mean))
         minneg4txt.write('\n')
         minneg4txt.close()               
 
