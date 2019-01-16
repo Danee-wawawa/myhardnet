@@ -35,7 +35,8 @@ with open(imgtxt_file, 'r') as f:
             print '-----------------img_path no exits',img_path
             continue
         print '--------------------img_path',img_path
-        test_lst.write("%d\t%s\n"%(img_id, img_path))
+        gt_path = os.path.join(dataset_root,gt_path)
+        test_lst.write("%d\t%s\t%s\n"%(img_id, img_path, gt_path))
     test_lst.close()
 #gt_path = os.path.join(dataset_root, 'ic13', 'Challenge1_Test_Task1_GT')
 submit_root = '../script_test_ch4'
